@@ -7,8 +7,8 @@ import {
 	DefaultDataPoint,
 	Plugin,
 } from "chart.js";
-import { defineComponent, h, ref, toValue, watch } from "vue";
-import { tryOnMounted, useElementSize } from "@vueuse/core";
+import { ref, toValue, watch } from "vue";
+import { tryOnMounted, useElementBounding, useElementSize } from "@vueuse/core";
 
 export type AsyncModule<TType extends ChartType = ChartType> = () => Promise<{
 	default: Plugin<TType>;
@@ -36,9 +36,9 @@ export function useChartJs<
 	let _chart: Chart<TType, TData, TLabel>;
 
 	const chartRef = ref<Chart<TType, TData, TLabel>>();
-	const canvasRef = ref<HTMLCanvasElement>();
-	const containerRef = ref<HTMLDivElement>();
-	const containerSize = useElementSize(containerRef);
+	const canvasRef = ref<HTMLCanvasElement | null>(null);
+	const containerRef = ref<HTMLDivElement | null>(null);
+	const containerSize = useElementBounding(containerRef);
 
 	function init() {
 		if (!canvasRef.value) {
@@ -59,15 +59,15 @@ export function useChartJs<
 		chartRef.value = _chart;
 	}
 
-	const ChartCanvas = h("canvas", { ref: canvasRef });
-	const ChartComponent = defineComponent({
-		name: "Chart",
-		setup(props, { slots }) {
-			return h("div", { ref: containerRef, class: "relative" }, [
-				slots.default ? slots.default() : ChartCanvas,
-			]);
-		},
-	});
+	// const ChartCanvas = h("canvas", { ref: canvasRef });
+	// const ChartComponent = defineComponent({
+	// 	name: "Chart",
+	// 	setup(props, { slots }) {
+	// 		return h("div", { ref: containerRef, class: "relative" }, [
+	// 			slots.default ? slots.default() : ChartCanvas,
+	// 		]);
+	// 	},
+	// });
 
 	watch([() => data(_chart), chartOptions], ([newData, newOptions]) => {
 		if (!_chart) {
@@ -94,8 +94,8 @@ export function useChartJs<
 
 	return {
 		init,
-		ChartComponent,
-		ChartCanvas,
+		// ChartComponent,
+		// ChartCanvas,
 		canvasRef,
 		containerRef,
 		chart: chartRef,

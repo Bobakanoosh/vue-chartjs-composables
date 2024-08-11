@@ -1,5 +1,5 @@
 {
-	"name": "vue-chartjs-composables-root",
+	"name": "vue-chartjs-composables",
 	"version": "0.0.0",
 	"description": "Set of composable wrappers for creating reactive charts with Chart.js",
 	"publishConfig": {
@@ -16,8 +16,8 @@
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build-fast": "tsup src/index.ts --format cjs,esm",
-		"build": "pnpm run build-fast -- --dts-resolve",
+		"dev": "tsup src/index.ts --format esm --watch --dts",
+		"build": "tsup src/index.ts --format cjs,esm --dts",
 		"test": "vitest run",
 		"prepublishOnly": "pnpm run build"
 	},
