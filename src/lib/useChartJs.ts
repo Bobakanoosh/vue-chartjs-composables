@@ -7,8 +7,8 @@ import {
 	DefaultDataPoint,
 	Plugin,
 } from "chart.js";
-import { ref, toValue, watch } from "vue";
-import { tryOnMounted, useElementBounding, useElementSize } from "@vueuse/core";
+import { Ref, ref, toValue, watch } from "vue";
+import { tryOnMounted, useElementBounding } from "@vueuse/core";
 
 export type AsyncModule<TType extends ChartType = ChartType> = () => Promise<{
 	default: Plugin<TType>;
@@ -21,6 +21,17 @@ export interface UseChartJsConfig<TType extends ChartType = ChartType> {
 	autoInit?: boolean;
 }
 
+export interface UseChartJsReturn<
+	TType extends ChartType = ChartType,
+	TData = DefaultDataPoint<TType>,
+	TLabel = unknown,
+> {
+	init: () => void;
+	canvasRef: Ref<HTMLCanvasElement | null>;
+	containerRef: Ref<HTMLDivElement | null>;
+	chart: Ref<Chart<TType, TData, TLabel> | undefined>;
+}
+
 export function useChartJs<
 	TType extends ChartType = ChartType,
 	TData = DefaultDataPoint<TType>,
@@ -30,12 +41,12 @@ export function useChartJs<
 	data: (chart: Chart<TType, TData, TLabel> | undefined) => ChartData<TType, TData, TLabel>,
 	chartOptions: () => ChartOptions<TType>,
 	config?: UseChartJsConfig<TType>,
-) {
+): UseChartJsReturn<TType, TData, TLabel> {
 	const { modules = [], asyncModules = [], plugins, autoInit = true } = config ?? {};
 
 	let _chart: Chart<TType, TData, TLabel>;
 
-	const chartRef = ref<Chart<TType, TData, TLabel>>();
+	const chart = ref<Chart<TType, TData, TLabel>>();
 	const canvasRef = ref<HTMLCanvasElement | null>(null);
 	const containerRef = ref<HTMLDivElement | null>(null);
 	const containerSize = useElementBounding(containerRef);
@@ -56,18 +67,8 @@ export function useChartJs<
 
 		_chart.data = data(_chart);
 		_chart.update();
-		chartRef.value = _chart;
+		chart.value = _chart;
 	}
-
-	// const ChartCanvas = h("canvas", { ref: canvasRef });
-	// const ChartComponent = defineComponent({
-	// 	name: "Chart",
-	// 	setup(props, { slots }) {
-	// 		return h("div", { ref: containerRef, class: "relative" }, [
-	// 			slots.default ? slots.default() : ChartCanvas,
-	// 		]);
-	// 	},
-	// });
 
 	watch([() => data(_chart), chartOptions], ([newData, newOptions]) => {
 		if (!_chart) {
@@ -88,17 +89,16 @@ export function useChartJs<
 	});
 
 	registerModules(modules, asyncModules).then(() => _chart?.update());
+
 	if (autoInit) {
 		tryOnMounted(init);
 	}
 
 	return {
 		init,
-		// ChartComponent,
-		// ChartCanvas,
 		canvasRef,
 		containerRef,
-		chart: chartRef,
+		chart,
 	};
 }
 

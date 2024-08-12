@@ -11,13 +11,12 @@
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"exports": {
-		"require": "./dist/index.js",
 		"import": "./dist/index.mjs"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"dev": "tsup src/index.ts --format esm --watch --dts",
-		"build": "tsup src/index.ts --format cjs,esm --dts",
+		"dev": "tsup --config tsup.dev.config.ts",
+		"build": "tsup --config tsup.config.ts",
 		"test": "vitest run",
 		"prepublishOnly": "pnpm run build"
 	},
