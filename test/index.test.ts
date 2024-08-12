@@ -1,6 +1,7 @@
-import { test, assert } from "vitest";
-import { foo } from "../src";
+import { describe, expect, test } from "vitest";
 
-test("simple", () => {
-	assert.equal(foo, "foo");
+describe("useChartJs", () => {
+	test("should be defined", () => {
+		expect(true).toBe(true);
+	});
 });

@@ -52,10 +52,16 @@ const data = useChartJsData<"line">(() => ({
 
 const options = useChartJsOptions<"line">(() => ({
 	animation: false,
+	plugins: {},
 }));
+
+async function zoom() {
+	return import("chartjs-plugin-zoom");
+}
 
 const instance = useChartJs("line", data, options, {
 	modules: [LineController, LineElement, PointElement, LinearScale, TimeScale, CategoryScale],
+	plugins: [zoom],
 });
 
 const [ChartComponent] = useChartJsComponent(instance);

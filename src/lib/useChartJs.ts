@@ -8,17 +8,52 @@ import {
 	Plugin,
 } from "chart.js";
 import { Ref, ref, toValue, watch } from "vue";
-import { tryOnMounted, useElementBounding } from "@vueuse/core";
+import { useElementBounding, whenever } from "@vueuse/core";
 
-export type AsyncModule<TType extends ChartType = ChartType> = () => Promise<{
+export type AsyncPlugin<TType extends ChartType = any> = () => Promise<{
 	default: Plugin<TType>;
 }>;
 
 export interface UseChartJsConfig<TType extends ChartType = ChartType> {
+	/**
+	 * Chart.js modules to register
+	 *
+	 * @example
+	 * ```ts
+	 * import { LineController, TimeScale, Tooltip } from "chart.js";
+	 * {
+	 * 	modules: [LineController, TimeScale, Tooltip]
+	 * }
+	 * ```
+	 */
 	modules?: ChartComponentLike[];
-	asyncModules?: AsyncModule[];
-	plugins?: Plugin<TType>[];
-	autoInit?: boolean;
+	/**
+	 * Chart.js plugins to be used.
+	 * Supports async plugins.
+	 *
+	 * @example
+	 * ```ts
+	 * import zoomPlugin from 'chartjs-plugin-zoom';
+	 * {
+	 * 	plugins: [zoomPlugin]
+	 * }
+	 * ```
+	 *
+	 * @example Asynchronous plugin
+	 * ```ts
+	 * {
+	 * 	plugins: [import("chartjs-plugin-zoom")]
+	 * }
+	 * ```
+	 */
+	plugins?: Array<Plugin<TType> | AsyncPlugin<TType>>;
+	/**
+	 * When true, the chart will not be automatically initialized.
+	 * When false, the chart will be automatically initialized whenever the canvasRef changes.
+	 *
+	 * @default false
+	 */
+	manual?: boolean;
 }
 
 export interface UseChartJsReturn<
@@ -42,7 +77,7 @@ export function useChartJs<
 	chartOptions: () => ChartOptions<TType>,
 	config?: UseChartJsConfig<TType>,
 ): UseChartJsReturn<TType, TData, TLabel> {
-	const { modules = [], asyncModules = [], plugins, autoInit = true } = config ?? {};
+	const { modules = [], plugins = [], manual = false } = config ?? {};
 
 	let _chart: Chart<TType, TData, TLabel>;
 
@@ -50,6 +85,9 @@ export function useChartJs<
 	const canvasRef = ref<HTMLCanvasElement | null>(null);
 	const containerRef = ref<HTMLDivElement | null>(null);
 	const containerSize = useElementBounding(containerRef);
+
+	const syncPlugins = plugins.filter((plugin) => typeof plugin !== "function");
+	const asyncPlugins = plugins.filter((plugin) => typeof plugin === "function");
 
 	function init() {
 		if (!canvasRef.value) {
@@ -61,9 +99,8 @@ export function useChartJs<
 			type,
 			data: data(_chart),
 			options: toValue(chartOptions),
-			// TODO: Fix this, no idea why it's not working
-			plugins: plugins as unknown as any,
-		}) as Chart<TType, TData, TLabel>;
+			plugins: syncPlugins,
+		});
 
 		_chart.data = data(_chart);
 		_chart.update();
@@ -88,11 +125,12 @@ export function useChartJs<
 		_chart?.update();
 	});
 
-	registerModules(modules, asyncModules).then(() => _chart?.update());
-
-	if (autoInit) {
-		tryOnMounted(init);
+	if (!manual) {
+		whenever(canvasRef, init);
 	}
+
+	registerModules(modules);
+	registerAsyncPlugins(asyncPlugins).then(() => _chart?.update());
 
 	return {
 		init,
@@ -102,10 +140,13 @@ export function useChartJs<
 	};
 }
 
-function registerModules(modules: ChartComponentLike[], asyncModules: AsyncModule[]) {
+function registerModules(modules: ChartComponentLike[]) {
 	Chart.register(...modules);
-	return Promise.all(asyncModules.map((module) => module())).then((resolvedAsyncModules) => {
-		const moduleDefaults = resolvedAsyncModules.map((module) => module.default);
-		Chart.register(...moduleDefaults);
+}
+
+function registerAsyncPlugins<TType extends ChartType = ChartType>(plugins: AsyncPlugin<TType>[]) {
+	return Promise.all(plugins.map((plugin) => plugin())).then((resolvedAsyncPlugins) => {
+		const pluginDefaults = resolvedAsyncPlugins.map((plugin) => plugin.default);
+		Chart.register(...pluginDefaults);
 	});
 }
